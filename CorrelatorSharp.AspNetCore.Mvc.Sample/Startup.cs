@@ -13,11 +13,11 @@ namespace CorrelatorSharp.AspNetCore.Mvc.Sample
         public IConfiguration Configuration { get; }
 
         public void ConfigureServices(IServiceCollection services)
-            => services.AddMvc(configuration
-                => 
-                {
-                    configuration.Filters.Add(new CorrelationIdActionFilter());
-                });
+        {
+            services
+                .AddMvc()
+                .AddCorrelatorSharpMiddleware();
+        }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
@@ -26,6 +26,7 @@ namespace CorrelatorSharp.AspNetCore.Mvc.Sample
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseCorrelatorSharpMiddleware();
             app.UseMvc();
         }
     }
