@@ -57,21 +57,38 @@ namespace CorrelatorSharp.AspNetCore.Mvc
         {
             using (var scope = ActivityScope.Create(correlationScopeName, correlationId))
             {
-                await next.Invoke(context);
+                context.Response.OnStarting(state =>
+                {
+                    if (state is ActivityScope activity)
+                    {
+                        context.Response.Headers.Add(CorrelationParentIdHttpHeader, activity.ParentId);
+                        context.Response.Headers.Add(CorrelationIdHttpHeader, activity.Id);
+                    }
 
-                context.Response.Headers.Add(CorrelationIdHttpHeader, scope.Id);
+                    return Task.CompletedTask;
+                }, scope);
+
+                await next.Invoke(context);
             }
         }
 
         private static async Task InvokeWithParentScope(Func<HttpContext, Task> next, HttpContext context, string correlationScopeName, string correlationId, string parentCorrelationId)
         {
-            using (var parent = ActivityScope.Create(null, parentCorrelationId))
+            using (ActivityScope.Create(null, parentCorrelationId))
             using (var child = ActivityScope.Child(correlationScopeName, correlationId))
             {
-                await next.Invoke(context);
+                context.Response.OnStarting(state =>
+                {
+                    if (state is ActivityScope activity)
+                    {
+                        context.Response.Headers.Add(CorrelationParentIdHttpHeader, activity.ParentId);
+                        context.Response.Headers.Add(CorrelationIdHttpHeader, activity.Id);
+                    }
 
-                context.Response.Headers.Add(CorrelationParentIdHttpHeader, parent.Id);
-                context.Response.Headers.Add(CorrelationIdHttpHeader, child.Id);
+                    return Task.CompletedTask;
+                }, child);
+
+                await next.Invoke(context);
             }
         }
 
